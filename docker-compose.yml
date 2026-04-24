@@ -1,0 +1,42 @@
+version: '3.8'
+
+# Compose reads a `.env` file next to this file for ${VAR} substitution (same keys as `.env.example`).
+# Set HCM_API_KEY, MANAGER_API_KEY, and HCM_WEBHOOK_SECRET in `.env` for production-like secrets.
+
+services:
+  readyon-timeoff:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        NODE_ENV: production
+    container_name: readyon-timeoff-service
+    ports:
+      - '3000:3000'
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      HCM_API_URL: http://mock-hcm:3001
+      HCM_API_KEY: ${HCM_API_KEY:-readyon-dev-key}
+      MANAGER_API_KEY: ${MANAGER_API_KEY:-docker-manager-key}
+      HCM_WEBHOOK_SECRET: ${HCM_WEBHOOK_SECRET:-readyon-dev-webhook-secret}
+      READYON_WEBHOOK_URL: ${READYON_WEBHOOK_URL:-http://readyon-timeoff:3000/webhooks/hcm}
+      DB_PATH: /app/data/timeoff.sqlite
+      MOCK_HCM_INJECT_FAILURES: ${MOCK_HCM_INJECT_FAILURES:-true}
+    depends_on:
+      - mock-hcm
+    volumes:
+      - ./data:/app/data
+
+  mock-hcm:
+    build:
+      context: .
+      dockerfile: mock-hcm/Dockerfile
+    container_name: readyon-mock-hcm
+    ports:
+      - '3001:3001'
+    environment:
+      NODE_ENV: production
+      MOCK_HCM_INJECT_FAILURES: ${MOCK_HCM_INJECT_FAILURES:-true}
+      READYON_WEBHOOK_URL: ${READYON_WEBHOOK_URL:-http://readyon-timeoff:3000/webhooks/hcm}
+      HCM_WEBHOOK_SECRET: ${HCM_WEBHOOK_SECRET:-readyon-dev-webhook-secret}
